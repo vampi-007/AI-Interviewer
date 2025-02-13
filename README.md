@@ -12,16 +12,17 @@
 ## Schema
 
 model User {
-  user_id    String      @id @unique @default(uuid())
-  name       String
-  username   String      @unique
-  password   String
-  created_at DateTime    @default(now())
-  updated_at DateTime?   @updatedAt
-  email      String      @unique
-  role       Role        @default(USER)
-  Interview  Interview[]
-  Resumes    Resumes[]
+  user_id     String      @id @unique @default(uuid())
+  name        String
+  username    String      @unique
+  password    String
+  created_at  DateTime    @default(now())
+  updated_at  DateTime?   @updatedAt
+  email       String      @unique
+  role        Role        @default(USER)
+  profile_pic String?
+  Interview   Interview[]
+  Resumes     Resumes[]
 }
 
 model Interview {
@@ -81,5 +82,4 @@ enum Role {
   ADMIN
   USER
 }
-
 
