@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.future import select
 from datetime import timedelta
 
-async def register_user(db: AsyncSession, user: UserCreate):
+async def register_user(db: AsyncSession, user: UserCreate, role: str = "USER"):
     # Check if the username already exists
     username_query = select(User).where(User.username == user.username)
     username_result = await db.execute(username_query)
@@ -28,7 +28,7 @@ async def register_user(db: AsyncSession, user: UserCreate):
     
     # Proceed with registration
     hashed_password = Hash.bcrypt(user.password)
-    db_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
+    db_user = User(username=user.username, email=user.email, hashed_password=hashed_password, role=role)
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
