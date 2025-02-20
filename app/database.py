@@ -1,10 +1,8 @@
 # app/database.py
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-from app.models import Base
 from typing import AsyncGenerator
 
 # Load environment variables from .env file
@@ -29,11 +27,11 @@ AsyncSessionLocal = sessionmaker(
     expire_on_commit=False
 )
 
-Base = declarative_base()
-
 # Create async function to create tables
 async def init_db():
     async with engine.begin() as conn:
+        # Import models here to avoid circular import
+        from app.models import Base
         await conn.run_sync(Base.metadata.create_all)
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
