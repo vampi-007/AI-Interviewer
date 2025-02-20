@@ -13,16 +13,18 @@ from app.services.email_service import send_reset_password_email
 from datetime import datetime, timedelta
 from jose import JWTError
 from app.utils.hashing import Hash
-from app.services.user_service import get_user, update_user, delete_user, get_all_users, create_user
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.services.user_service import get_user, update_user, delete_user, get_all_users, create_user_service
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+security_scheme = HTTPBearer()
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as db:
         yield db
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_scheme), db: AsyncSession = Depends(get_db)):
+    token = credentials.credentials  # Extract the token string
     credentials = verify_token(token)
     user = await db.execute(select(User).where(User.username == credentials.get("sub")))
     user = user.scalar_one_or_none()
@@ -152,8 +154,8 @@ async def reset_password(
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
 @router.post("/users", response_model=schemas.UserResponse)
-async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
-    return await create_user(db=db, user=user)
+async def create_user_route(user: schemas.UserCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
+    return await create_user_service(db=db, user=user)
 
 @router.get("/users/{user_id}", response_model=schemas.UserResponse)
 async def read_user(user_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_admin_user)):

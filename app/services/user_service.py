@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from typing import List
 
-async def create_user(db: AsyncSession, user: UserCreate) -> UserResponse:
+async def create_user_service(db: AsyncSession, user: UserCreate) -> UserResponse:
     # Check if the username already exists
     existing_user = await db.execute(select(User).where(User.username == user.username))
     if existing_user.scalar_one_or_none():
