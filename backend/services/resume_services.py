@@ -15,9 +15,9 @@ from utils import pdf_util
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from fastapi.responses import JSONResponse
+from fastapi import HTTPException
 
-
-async def process_resume(file: UploadFile):
+async def upload_resume(file: UploadFile):
     """Process resume: Extract text, send to LLM, return structured response."""
     pdf_text = pdf_util.extract_text_from_pdf(file.file)
     if "error" in pdf_text:
@@ -59,7 +59,7 @@ async def process_resume(file: UploadFile):
 
 
 
-async def submit_resume(user_id: uuid.UUID, form_data: dict, db: Session):
+async def submit_resume(user_id: str, form_data: dict, db: Session):
     """Store the resume form data as a JSON object in the database."""
     
     try:
@@ -69,7 +69,7 @@ async def submit_resume(user_id: uuid.UUID, form_data: dict, db: Session):
 
         # Create a new resume entry
         new_resume = Resumes(
-            resume_id=uuid.uuid4(),  # Unique Resume ID
+            resume_id=str(uuid.uuid4()),  # Unique Resume ID
             resume_data=form_data,  # Storing the form data as JSON
             uploaded_at=datetime.utcnow(),
             user_id=user_id  # Linking the resume to the user
@@ -89,7 +89,7 @@ async def submit_resume(user_id: uuid.UUID, form_data: dict, db: Session):
         db.rollback()  # Rollback in case of failure
         return JSONResponse(content={"error": str(e)}, status_code=500)
     
-async def get_user_resumes(user_id: uuid.UUID, db: Session):
+async def get_user_resumes(user_id: str, db: Session):
     """Retrieve all resumes for a specific user."""
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
@@ -99,7 +99,9 @@ async def get_user_resumes(user_id: uuid.UUID, db: Session):
     resume_data = [{"resume_id": str(resume.resume_id), "uploaded_at": resume.uploaded_at, "resume_data": resume.resume_data} for resume in resumes]
 
     return {"user_id": str(user_id), "resumes": resume_data}  # Return raw data
-async def get_resume_by_user_id(user_id: uuid.UUID, resume_id: uuid.UUID, db: Session):
+
+
+async def get_resume_by_user_id(user_id:str , resume_id: str, db: Session):
     """Retrieve a specific resume by ID for a given user."""
     try:
         # Query the database for the specific resume
@@ -119,7 +121,7 @@ async def get_resume_by_user_id(user_id: uuid.UUID, resume_id: uuid.UUID, db: Se
     
 from fastapi.responses import JSONResponse
 
-async def get_resume_by_id(resume_id: uuid.UUID, db: Session):
+async def get_resume_by_id(resume_id: str, db: Session):
     """Retrieve a resume by its ID and return as JSONResponse."""
     try:
         # Query the database for the specific resume

@@ -14,9 +14,12 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
         return JSONResponse(content={"error": "Only PDF files are allowed"}, status_code=400)
 
     return await resume_services.upload_resume(file)
+
+
+
 @router.post("/submit/")
 async def submit_resume(
-    user_id: uuid.UUID = Query(..., description="UUID of the user"),
+    user_id: str = Query(..., description="UUID of the user"),
     form_data: Dict = ...,  # Expect JSON body
     db: Session = Depends(get_db)
 ):
@@ -24,7 +27,7 @@ async def submit_resume(
 
 @router.get("/get_user_resumes/{user_id}")
 async def get_user_resumes(
-    user_id: uuid.UUID = Path(..., description="The ID of the user"),
+    user_id: str = Path(..., description="The ID of the user"),
     db: Session = Depends(get_db)
 ):
     print(f"Received request for user_id: {user_id}")  # Debug print
@@ -36,8 +39,8 @@ async def get_user_resumes(
 
 @router.get("/users/{user_id}/resumes/{resume_id}")
 async def get_resume_by_user_id(
-    user_id: uuid.UUID = Path(..., description="The ID of the user"),
-    resume_id: uuid.UUID = Path(..., description="The ID of the resume to retrieve"),
+    user_id: str = Path(..., description="The ID of the user"),
+    resume_id: str = Path(..., description="The ID of the resume to retrieve"),
     db: Session = Depends(get_db)
 ):
     try:
@@ -52,7 +55,7 @@ async def get_resume_by_user_id(
 
 @router.get("/resume/{resume_id}")
 async def get_resume_by_id(
-    resume_id: uuid.UUID = Path(..., description="The ID of the resume to retrieve"),
+    resume_id: str = Path(..., description="The ID of the resume to retrieve"),
     db: Session = Depends(get_db)
 ):
     try:
