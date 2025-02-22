@@ -1,9 +1,9 @@
 # app/services/auth_service.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import User
-from app.schemas import UserCreate
-from app.utils.hashing import Hash, verify_password
-from app.utils.token import create_access_token, create_refresh_token
+from backend.models import User
+from backend.schemas import UserCreate
+from backend.utils.hashing import Hash, verify_password
+from backend.utils.token import create_access_token, create_refresh_token
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.future import select
@@ -34,8 +34,8 @@ async def register_user(db: AsyncSession, user: UserCreate, role: str = "USER"):
     await db.refresh(db_user)
     return db_user
 
-async def authenticate_user(db: AsyncSession, username: str, password: str):
-    query = select(User).where(User.username == username)
+async def authenticate_user(db: AsyncSession, email: str, password: str):
+    query = select(User).where(User.email == email)
     result = await db.execute(query)
     user = result.scalar_one_or_none()
     
@@ -51,11 +51,11 @@ async def authenticate_user(db: AsyncSession, username: str, password: str):
         )
     return user
 
-async def login_user(db: AsyncSession, username: str, password: str):
-    user = await db.query(User).filter(User.username == username).first()
+async def login_user(db: AsyncSession, email: str, password: str):
+    user = await db.query(User).filter(User.email == email).first()
     if user and Hash.verify(user.hashed_password, password):
-        access_token = create_access_token(data={"sub": user.username, "role": user.role})
-        refresh_token = create_refresh_token(data={"sub": user.username})
+        access_token = create_access_token(data={"sub": user.email, "role": user.role})
+        refresh_token = create_refresh_token(data={"sub": user.email})
         
         # Optionally store the refresh token in the database
         user.refresh_token = refresh_token
