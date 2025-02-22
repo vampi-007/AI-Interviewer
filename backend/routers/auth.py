@@ -1,20 +1,20 @@
 # app/routers/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from app import schemas, models
-from app.database import AsyncSessionLocal, get_db
-from app.services.auth_service import register_user, authenticate_user
-from app.utils.token import create_access_token, create_refresh_token, verify_token, verify_refresh_token
+from backend import schemas, models
+from backend.database import AsyncSessionLocal, get_db
+from backend.services.auth_service import register_user, authenticate_user
+from backend.utils.token import create_access_token, create_refresh_token, verify_token, verify_refresh_token
 from fastapi.security import OAuth2PasswordBearer
 from typing import AsyncGenerator, List
-from app.models import User
+from backend.models import User
 from sqlalchemy import select
-from app.services.email_service import send_reset_password_email
+from backend.services.email_service import send_reset_password_email
 from datetime import datetime, timedelta
 from jose import JWTError
-from app.utils.hashing import Hash
+from backend.utils.hashing import Hash
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.services.user_service import get_user, update_user, delete_user, get_all_users, create_user_service
+from backend.services.user_service import get_user, update_user, delete_user, get_all_users, create_user_service
 
 router = APIRouter()
 security_scheme = HTTPBearer()
@@ -42,8 +42,9 @@ async def get_current_admin_user(current_user: User = Depends(get_current_user))
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
 
-@router.post("/register", response_model=schemas.UserResponse)
+@router.post("/register")
 async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
+    # Logic for user registration
     return await register_user(db=db, user=user)
 
 @router.post("/register-admin", response_model=schemas.UserResponse)
@@ -65,22 +66,12 @@ async def register_admin(user: schemas.UserCreate, db: AsyncSession = Depends(ge
 
 @router.post("/login")
 async def login(user: schemas.UserLogin, db: AsyncSession = Depends(get_db)):
-    db_user = await authenticate_user(db, user.username, user.password)
+    db_user = await authenticate_user(db, user.email, user.password)
     if not db_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     
-    access_token = create_access_token(data={"sub": db_user.username, "role": db_user.role})
-    refresh_token = create_refresh_token(data={"sub": db_user.username})
-
-    # Store refresh token in database
-    db_user.refresh_token = refresh_token
-    await db.commit()
-
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
-    }
+    access_token = create_access_token(data={"sub": db_user.email, "role": db_user.role})
+    return {"access_token": access_token}
 
 @router.post("/token/refresh")
 async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):

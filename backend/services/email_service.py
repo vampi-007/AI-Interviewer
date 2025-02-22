@@ -1,6 +1,6 @@
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
-from app.config import settings  # Create this for email settings
+from backend.config import settings  # Create this for email settings
 
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,

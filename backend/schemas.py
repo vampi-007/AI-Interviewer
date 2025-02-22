@@ -22,7 +22,7 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 class UserLogin(BaseModel):
-    username: str
+    email: EmailStr
     password: str
 
 class Token(BaseModel):

@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import User
-from app.schemas import UserResponse, UserCreate, UserUpdate
+from backend.models import User
+from backend.schemas import UserResponse, UserCreate, UserUpdate
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from typing import List

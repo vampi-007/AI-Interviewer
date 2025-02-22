@@ -31,7 +31,7 @@ AsyncSessionLocal = sessionmaker(
 async def init_db():
     async with engine.begin() as conn:
         # Import models here to avoid circular import
-        from app.models import Base
+        from backend.models import Base
         await conn.run_sync(Base.metadata.create_all)
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
