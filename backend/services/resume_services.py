@@ -36,7 +36,7 @@ async def upload_resume(file: UploadFile):
                  "- All Projects (project names and descriptions in the format 'name: description', write null if not found)\n"
                  "- All Experiences (job titles, company names, start dates, and end dates in the format 'job_title: company_name (start_date - end_date)', write null if not found)\n"
                  "Resume Text:\n{text}\n\n"
-                 "Provide the extracted information as a JSON object:\n"
+                 "Provide the extracted information as a JSON object and do not write any heading in response:\n"
                  "{{'name': 'John Doe', 'email': null, 'phone_number': null, "
                  "'skills': 'Python, JavaScript, SQL', 'education': {{'degree': 'BSc Computer Science', 'institution': 'University A', 'start_date': '2015', 'end_date': '2019'}}, "
                  "'projects': [{{'name': 'Project A', 'description': 'Description A'}}, {{'name': 'Project B', 'description': 'Description B'}}], "
