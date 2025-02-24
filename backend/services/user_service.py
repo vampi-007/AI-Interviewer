@@ -4,6 +4,11 @@ from backend.schemas import UserResponse, UserCreate, UserUpdate
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from typing import List
+from uuid import UUID
+from passlib.context import CryptContext  # Make sure to import this for password hashing
+
+# Initialize password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 async def create_user_service(db: AsyncSession, user: UserCreate) -> UserResponse:
     # Check if the username already exists
@@ -16,17 +21,30 @@ async def create_user_service(db: AsyncSession, user: UserCreate) -> UserRespons
     if existing_email.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    db_user = User(username=user.username, email=user.email, hashed_password=user.password)  # Hash password here
+    # Hash the password before saving
+    hashed_password = pwd_context.hash(user.password)
+
+    db_user = User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password  # Use the hashed password
+    )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
-    return db_user
 
-async def get_user(db: AsyncSession, user_id: int) -> UserResponse:
-    user = await db.execute(select(User).where(User.id == user_id))
+    return UserResponse(  # Ensure you return the UserResponse model
+        user_id=str(db_user.user_id),  # Convert UUID to string
+        username=db_user.username,
+        email=db_user.email,
+        role=db_user.role
+    )
+
+async def get_user(db: AsyncSession, user_id: UUID) -> UserResponse:
+    user = await db.execute(select(User).where(User.user_id == user_id))
     return user.scalar_one_or_none()
 
-async def update_user(db: AsyncSession, user_id: int, user_data: UserUpdate) -> UserResponse:
+async def update_user(db: AsyncSession, user_id: UUID, user_data: UserUpdate) -> UserResponse:
     user = await get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -38,7 +56,7 @@ async def update_user(db: AsyncSession, user_id: int, user_data: UserUpdate) -> 
     await db.refresh(user)
     return user
 
-async def delete_user(db: AsyncSession, user_id: int) -> None:
+async def delete_user(db: AsyncSession, user_id: UUID) -> None:
     user = await get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

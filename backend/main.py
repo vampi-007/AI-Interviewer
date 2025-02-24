@@ -1,8 +1,9 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import auth
+from backend.routers import auth ,resume ,user ,admin
 from backend.database import init_db
+
 
 app = FastAPI()
 
@@ -24,5 +25,8 @@ app.add_middleware(
 async def startup():
     await init_db()
 
-app.include_router(auth.router)
-# app.include_router(admin.router)
+app.include_router(auth.router , tags=["Auth"])
+app.include_router(resume.router, tags=["Resume"])
+app.include_router(user.router, tags=["User"])
+app.include_router(admin.router, tags=["Admin"])
+

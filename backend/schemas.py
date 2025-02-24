@@ -13,7 +13,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=6)
 
 class UserResponse(BaseModel):
-    id: int
+    user_id: str
     username: str
     email: EmailStr
     role: str

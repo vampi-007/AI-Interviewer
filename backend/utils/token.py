@@ -8,10 +8,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Read the secret key from the environment variable
-SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key")  # Use a default for development
+SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key") 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+print(f"Loaded SECRET_KEY: {SECRET_KEY}")  # Debugging line
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     to_encode = data.copy()
