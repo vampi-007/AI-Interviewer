@@ -1,1 +1,84 @@
-Generic single-database configuration.
+# 📌 Alembic Migrations Guide for FastAPI
+
+Alembic is a lightweight **database migration tool** for SQLAlchemy that allows you to manage schema changes.
+
+---
+
+## 📦 **1. Install Alembic**
+First, ensure Alembic is installed in your virtual environment:
+
+```bash
+pip install alembic
+```
+
+## 📝 **2. Initialize Alembic**
+
+Create a new Alembic directory:
+
+```bash
+alembic init alembic
+```
+
+## 📝 **3. Create Migrations**
+
+To create a new migration:
+
+```bash
+alembic revision --autogenerate -m "Your migration message"
+```
+
+## 📝 **4. Apply Migrations**
+
+To apply the migrations:
+
+```bash
+alembic upgrade head
+``` 
+
+## 📝 **5. Create Initial Migration**
+
+To create an initial migration:
+
+```bash
+alembic revision --autogenerate -m "Initial migration"
+```
+
+## 📝 **6. Migrate to a Specific Revision**
+
+To migrate to a specific revision:
+
+```bash
+alembic upgrade <revision_hash>
+```
+
+## 📝 **7. Check Migrations**
+
+To check the status of migrations:
+
+```bash
+alembic status
+``` 
+
+## 📝 **8. Rollback Migrations**
+
+To rollback the last migration:
+
+```bash
+alembic downgrade -1
+```
+
+## 📝 **9. Create a New Migration**
+
+To create a new migration after making changes:
+
+```bash
+alembic revision --autogenerate -m "Your migration message"
+```
+    
+## 📝 **10. Check Migrations**
+
+To check the status of migrations:
+
+```bash
+alembic status
+```

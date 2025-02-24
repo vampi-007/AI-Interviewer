@@ -4,6 +4,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # Database settings
     database_url: str
+    UPLOAD_FOLDER: str = './uploads'
     
     # JWT settings
     secret_key: str
@@ -20,6 +21,10 @@ class Settings(BaseSettings):
     MAIL_SSL_TLS: bool = False
     MAIL_STARTTLS: bool = True
     MAIL_FROM_NAME: str = "AI Interviewer"
+    
+    # OpenAI settings
+    OPENAI_API_KEY: str
+    OPENAI_API_BASE: str = "https://models.inference.ai.azure.com"
     
     class Config:
         env_file = ".env"

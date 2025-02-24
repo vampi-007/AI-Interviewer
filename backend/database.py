@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 from typing import AsyncGenerator
+from sqlalchemy.ext.declarative import declarative_base
 
 # Load environment variables from .env file
 load_dotenv()
@@ -39,3 +40,5 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 # Remove the Database import and instance since we're using SQLAlchemy's async features
+
+Base = declarative_base()

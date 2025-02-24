@@ -32,7 +32,9 @@ async def register_user(db: AsyncSession, user: UserCreate, role: str = "USER"):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
-    return db_user
+
+
+    return db_user  # Return the user object
 
 async def authenticate_user(db: AsyncSession, email: str, password: str):
     query = select(User).where(User.email == email)

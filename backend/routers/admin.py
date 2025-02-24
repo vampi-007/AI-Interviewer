@@ -19,5 +19,5 @@ async def read_admin_dashboard(current_user: User = Depends(get_current_admin_us
 @router.get("/admin/users")
 async def list_users(current_user: User = Depends(get_current_admin_user), db: AsyncSession = Depends(get_db)):
     # Logic to list users
-    users = await db.execute(select(User))  # Example of fetching users
-    return {"users": users.scalars().all()}  # Replace with actual user data
+    users = await db.execute(select(User))  
+    return {"users": users.scalars().all()}  

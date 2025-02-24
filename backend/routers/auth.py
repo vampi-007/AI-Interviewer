@@ -23,18 +23,37 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as db:
         yield db
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_scheme), db: AsyncSession = Depends(get_db)):
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme), 
+    db: AsyncSession = Depends(get_db)
+):
     token = credentials.credentials  # Extract the token string
+    print(f"Received token: {token}")  # Log the received token
+
     credentials = verify_token(token)
-    user = await db.execute(select(User).where(User.username == credentials.get("sub")))
+    print(f"Decoded payload: {credentials}")  # Log the decoded payload
+
+    email = credentials.get("sub")  # Assuming 'sub' is the email
+    if email is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = await db.execute(select(User).where(User.email == email))  # Adjust if necessary
     user = user.scalar_one_or_none()
+    
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
     return user
+
+
 
 # Dependency to check if the user is an admin
 async def get_current_admin_user(current_user: User = Depends(get_current_user)):
@@ -48,21 +67,46 @@ async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db))
     return await register_user(db=db, user=user)
 
 @router.post("/register-admin", response_model=schemas.UserResponse)
-async def register_admin(user: schemas.UserCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # Check if any admins exist
+async def register_admin(
+    user: schemas.UserCreate, 
+    db: AsyncSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    # Debugging: Print current user
+    print("Current User:", current_user.username, "Role:", current_user.role)
+
+    # Fetch existing admins
     existing_admins_query = select(User).where(User.role == "ADMIN")
     existing_admins_result = await db.execute(existing_admins_query)
     existing_admins = existing_admins_result.scalars().all()
 
+    # Allow the first admin registration if no existing admins
     if not existing_admins:
-        # If no admins exist, allow registration
-        return await register_user(db=db, user=user, role="ADMIN")
-    else:
-        # If an admin exists, only allow the current admin to register new admins
-        if current_user.role != "ADMIN":
-            raise HTTPException(status_code=403, detail="Not authorized to create admin.")
-        
-        return await register_user(db=db, user=user, role="ADMIN")
+        print("No existing admins. Allowing first admin registration.")  # Debugging
+        new_admin = await register_user(db=db, user=user, role="ADMIN")
+        return schemas.UserResponse(
+            user_id=str(new_admin.user_id),  # Convert UUID to string
+            username=new_admin.username,
+            email=new_admin.email,
+            role=new_admin.role
+        )
+
+    # If an admin exists, only allow another admin to create new admins
+    if current_user.role != "ADMIN":
+        print("User is not an admin. Denying access.")  # Debugging
+        raise HTTPException(status_code=403, detail="Not authorized to create admin.")
+
+    new_admin = await register_user(db=db, user=user, role="ADMIN")
+
+    return schemas.UserResponse(
+        user_id=str(new_admin.user_id),  # Convert UUID to string
+        username=new_admin.username,
+        email=new_admin.email,
+        role=new_admin.role
+    )
+
+
+
 
 @router.post("/login")
 async def login(user: schemas.UserLogin, db: AsyncSession = Depends(get_db)):
@@ -71,21 +115,25 @@ async def login(user: schemas.UserLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     
     access_token = create_access_token(data={"sub": db_user.email, "role": db_user.role})
-    return {"access_token": access_token}
+    return {"access_token": access_token,
+            "refresh_token": create_refresh_token(data={"sub": db_user.email})
+            }
 
 @router.post("/token/refresh")
 async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
     # Verify the refresh token
-    username = verify_refresh_token(refresh_token)
-    if not username:
+    payload = verify_refresh_token(refresh_token)  # Ensure this function returns the payload
+    if payload is None:
         raise HTTPException(status_code=403, detail="Invalid refresh token")
+
+    username = payload.get("sub")  # Extract username from the payload
 
     # Use correct async query syntax
     query = select(User).where(User.username == username)
     result = await db.execute(query)
     user = result.scalar_one_or_none()
     
-    if not user or user.refresh_token != refresh_token:
+    if not user:
         raise HTTPException(status_code=403, detail="Invalid refresh token")
 
     # Create a new access token
@@ -144,31 +192,3 @@ async def reset_password(
     except JWTError:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
-@router.post("/users", response_model=schemas.UserResponse)
-async def create_user_route(user: schemas.UserCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
-    return await create_user_service(db=db, user=user)
-
-@router.get("/users/{user_id}", response_model=schemas.UserResponse)
-async def read_user(user_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
-    user = await get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-@router.put("/users/{user_id}", response_model=schemas.UserResponse)
-async def update_existing_user(user_id: int, user_data: schemas.UserUpdate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
-    return await update_user(db=db, user_id=user_id, user_data=user_data)
-
-@router.delete("/users/{user_id}", response_model=dict)
-async def delete_existing_user(user_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
-    await delete_user(db=db, user_id=user_id)
-    return {"detail": "User deleted successfully"}
-
-@router.get("/users", response_model=List[schemas.UserResponse])
-async def read_all_users(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
-    users = await get_all_users(db)
-    return users
-
-# @router.get("/users/me", response_model=schemas.UserResponse)
-# async def read_users_me(current_user: models.User = Depends(get_current_user)):
-#     return current_user
