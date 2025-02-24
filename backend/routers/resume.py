@@ -36,7 +36,8 @@ async def get_user_resumes(
         return resumes
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+    
+    
 @router.get("/users/{user_id}/resumes/{resume_id}")
 async def get_resume_by_user_id(
     user_id: str = Path(..., description="The ID of the user"),
@@ -45,13 +46,18 @@ async def get_resume_by_user_id(
 ):
     try:
         resume = await resume_services.get_resume_by_user_id(user_id, resume_id, db)
+
         if not resume:
             raise HTTPException(status_code=404, detail=f"Resume {resume_id} not found")
-        if resume.user_id != user_id:  # Access the ORM object's attribute
+
+        # ✅ FIX: Access "user_id" as a dictionary key, not an attribute
+        if resume.get("user_id") != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
-        return resume  # Return the ORM object directly
+
+        return resume
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/resume/{resume_id}")
 async def get_resume_by_id(
