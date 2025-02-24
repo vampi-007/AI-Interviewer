@@ -9,6 +9,7 @@ from backend.utils import pdf_util
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from backend.config import settings
+from sqlalchemy.future import select
 
 
 import json
@@ -24,14 +25,23 @@ from backend.config import settings  # Assuming you have a settings module for c
 from backend.database import get_db  # Database session dependency
 from backend.utils import pdf_util  # Utility module for extracting text from PDFs
 
+
 async def upload_resume(file: UploadFile, db: AsyncSession):
     """Process resume: Extract text, send to LLM, return structured response."""
+    
+    # Extract text from the uploaded PDF
     pdf_text = pdf_util.extract_text_from_pdf(file.file)
     if "error" in pdf_text:
         return JSONResponse(content=pdf_text, status_code=400)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=settings.OPENAI_API_KEY, openai_api_base=settings.OPENAI_API_BASE)
+    # Initialize LLM with the new import
+    llm = ChatOpenAI(
+        model="gpt-4o-mini",
+        openai_api_key=settings.OPENAI_API_KEY,
+        openai_api_base=settings.OPENAI_API_BASE
+    )
 
+    # Define the prompt template
     resume_prompt_template = PromptTemplate(
         input_variables=["text"],
         template="Extract the following information from the resume:\n"
@@ -51,22 +61,27 @@ async def upload_resume(file: UploadFile, db: AsyncSession):
                  "{{'job_title': 'Intern', 'company_name': 'Company B', 'start_date': '2019-01-01', 'end_date': '2019-12-31'}}]}}"
     )
 
+    # Format the final prompt
     final_prompt = resume_prompt_template.format(text=pdf_text)
 
     # Ensure the input is structured correctly
     messages = [{"role": "user", "content": final_prompt}]
     
     try:
-        response = llm(messages)  # Pass the structured input
+        # Use invoke() instead of calling llm directly
+        response = llm.invoke(messages)
     except Exception as e:
-        print("Error calling LLM:", e)  # Print the exception details
+        print("Error calling LLM:", e)
         return JSONResponse(content={"error": f"Failed to call LLM: {str(e)}"}, status_code=500)
 
     # Debugging: Print the raw response content
-    print("Raw response content:", response.content)  # Debug print
+    print("Raw response content:", response.content)
 
     try:
-        cleaned_response = response.content.strip().replace('"null"', 'null')
+        # Remove extra formatting
+        cleaned_response = response.content.strip().strip("```json").strip("```").replace('"null"', 'null')
+
+        # Parse JSON
         parsed_data = json.loads(cleaned_response)
     except json.JSONDecodeError as e:
         print("JSON decoding error:", e)
@@ -78,7 +93,7 @@ async def upload_resume(file: UploadFile, db: AsyncSession):
 
 
 
-async def submit_resume(user_id: str, form_data: dict, db: Session):
+async def submit_resume(user_id: str, form_data: dict, db: AsyncSession):
     """Store the resume form data as a JSON object in the database."""
     
     try:
@@ -96,8 +111,8 @@ async def submit_resume(user_id: str, form_data: dict, db: Session):
 
         # Save to database
         db.add(new_resume)
-        db.commit()
-        db.refresh(new_resume)
+        await db.commit()  # Await the commit
+        await db.refresh(new_resume)  # Await the refresh
 
         return JSONResponse(
             content={"message": "Resume submitted successfully", "resume_id": str(new_resume.resume_id)},
@@ -105,60 +120,73 @@ async def submit_resume(user_id: str, form_data: dict, db: Session):
         )
 
     except Exception as e:
-        db.rollback()  # Rollback in case of failure
+        await db.rollback()  # Rollback in case of failure
         return JSONResponse(content={"error": str(e)}, status_code=500)
     
-async def get_user_resumes(user_id: str, db: Session):
+
+async def get_user_resumes(user_id: str, db: AsyncSession):
     """Retrieve all resumes for a specific user."""
-    user = db.query(User).filter(User.user_id == user_id).first()
+    result = await db.execute(select(User).filter(User.user_id == user_id))
+    user = result.scalar_one_or_none()
+
     if not user:
-        return None  # Return None if user is not found
+        return JSONResponse(content={"error": "User not found"}, status_code=404)
 
-    resumes = db.query(Resumes).filter(Resumes.user_id == user_id).all()
-    resume_data = [{"resume_id": str(resume.resume_id), "uploaded_at": resume.uploaded_at, "resume_data": resume.resume_data} for resume in resumes]
+    result = await db.execute(select(Resumes).filter(Resumes.user_id == user_id))
+    resumes = result.scalars().all()
 
-    return {"user_id": str(user_id), "resumes": resume_data}  # Return raw data
+    resume_data = [
+        {
+            "resume_id": str(resume.resume_id),
+            "uploaded_at": resume.uploaded_at.isoformat(),  # Convert datetime to ISO format string
+            "resume_data": resume.resume_data
+        }
+        for resume in resumes
+    ]
 
+    return JSONResponse(content={"user_id": str(user_id), "resumes": resume_data}, status_code=200)
 
-async def get_resume_by_user_id(user_id: str, db: Session):
+async def get_resume_by_user_id(user_id: str, resume_id: str, db: AsyncSession):
     """Retrieve a specific resume by ID for a given user."""
-    user = db.query(User).filter(User.user_id == user_id).first()
+    # Query user using async execute
+    result = await db.execute(select(User).filter(User.user_id == user_id))
+    user = result.scalar_one_or_none()  # Fetch one or None
+
     if not user:
-        return None  # Return None if user is not found
+        return JSONResponse(content={"error": "User not found"}, status_code=404)
 
-    resumes = db.query(Resumes).filter(Resumes.user_id == user_id).all()
-    resume_data = [{"resume_id": str(resume.resume_id), "uploaded_at": resume.uploaded_at, "resume_data": resume.resume_data} for resume in resumes]
+    # Query resume using async execute
+    result = await db.execute(select(Resumes).filter(Resumes.user_id == user_id, Resumes.resume_id == resume_id))
+    resume = result.scalar_one_or_none()  # Fetch one or None
 
-    return {"user_id": str(user_id), "resumes": resume_data}  # Return raw data
+    if not resume:
+        return JSONResponse(content={"error": f"Resume {resume_id} not found"}, status_code=404)
 
+    return {
+        "resume_id": str(resume.resume_id),
+        "uploaded_at": resume.uploaded_at.isoformat(),  # Convert datetime to JSON-serializable format
+        "resume_data": resume.resume_data,
+        "user_id": str(resume.user_id)
+    }
 
-async def get_resume_by_id(resume_id: str, db: Session):
+async def get_resume_by_id(resume_id: str, db: AsyncSession):
     """Retrieve a resume by its ID and return as JSONResponse."""
     try:
-        # Query the database for the specific resume
-        resume = db.query(Resumes).filter(
-            Resumes.resume_id == resume_id
-        ).first()
-        
+        result = await db.execute(select(Resumes).filter(Resumes.resume_id == resume_id))
+        resume = result.scalar_one_or_none()
+
         if not resume:
-            return JSONResponse(
-                content={"error": f"Resume {resume_id} not found"},
-                status_code=404
-            )
-        print(resume.resume_id)  # Debug print
-        # Return the resume data as JSONResponse
+            return JSONResponse(content={"error": f"Resume {resume_id} not found"}, status_code=404)
+
         return JSONResponse(
             content={
                 "resume_id": str(resume.resume_id),
                 "user_id": str(resume.user_id),
-                "resume_data":str( resume.resume_data),
-                "uploaded_at": str(resume.uploaded_at)  # Convert datetime to string
+                "resume_data": str(resume.resume_data),
+                "uploaded_at": resume.uploaded_at.isoformat()  # Convert datetime to ISO format string
             },
             status_code=200
         )
-        
+
     except Exception as e:
-        return JSONResponse(
-            content={"error": f"Error retrieving resume: {str(e)}"},
-            status_code=500
-        )
+        return JSONResponse(content={"error": f"Error retrieving resume: {str(e)}"}, status_code=500)
