@@ -10,9 +10,42 @@ from services.tech_stack_prompt_services import (
     delete_tech_stack_prompt
 )
 from schemas import TechStackPrompt, TechStackPromptCreate, TechStackPromptResponse
+from services.tech_stack_agent import TechStackAgent
 
 router = APIRouter()
+tech_agent = TechStackAgent()
 
+@router.post("/generate-and-store", status_code=status.HTTP_201_CREATED)
+async def generate_and_store_prompt(
+    tech_stack: str,
+    difficulty: str = "MEDIUM",
+    db: Session = Depends(get_db)
+    ):
+    try:
+        # Generate AI prompt
+        generated_content = await tech_agent.generate_prompt(tech_stack, difficulty)
+        if not generated_content:
+            raise HTTPException(status_code=500, detail="Failed to generate prompt")
+
+        print("Genrated Prompt_______________")
+        print(generated_content)
+        # Store in database
+        prompt_data = TechStackPromptCreate(
+            tech_stack=tech_stack,
+            difficulty=difficulty,
+            generated_prompt=generated_content
+        )
+        db_prompt = await create_tech_stack_prompt(db, prompt_data)
+        
+        
+        return {
+            "message": "Prompt generated and stored successfully",
+            "prompt_id": db_prompt.tech_prompt_id,
+            "content": generated_content
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @router.post("/", response_model=TechStackPrompt, status_code=status.HTTP_201_CREATED)
 async def create_tech_stack_prompt_endpoint(
     prompt: TechStackPromptCreate,
