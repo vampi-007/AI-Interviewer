@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 from backend.database import Base
-from backend.models import Base, User, Resumes, Prompt, TechStackPrompts  # Import all models
+from backend.models import Base, User, Resumes, Prompt
+  # Import all models
 
 import os
 from dotenv import load_dotenv
