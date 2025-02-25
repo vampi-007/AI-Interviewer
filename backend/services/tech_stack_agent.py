@@ -1,11 +1,15 @@
 import os
 from openai import OpenAI
-from backend.models import TechStackPrompts
-from backend.schemas import TechStackPromptCreate
+from backend.models import Prompt , Difficulty # Update to use the unified Prompt model
+from backend.schemas import PromptCreate
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import logging
+
+from uuid import uuid4
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.future import select
+from fastapi import HTTPException
 
 # Configure loggingss
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +44,18 @@ class TechStackAgent:
                     Include 3-5 challenging exercises"""
         }
 
+    # ✅ Check for Existing Prompt (Async)
+    async def get_existing_prompt(self, db: AsyncSession, tech_stack: str, difficulty: str) -> Optional[Prompt]:
+        try:
+            query = select(Prompt).where(
+                (Prompt.name == f"{tech_stack} - {difficulty}")
+            )
+            result = await db.execute(query)
+            return result.scalars().first()
+        except Exception as e:
+            logger.error(f"Failed to fetch existing prompt: {str(e)}")
+            return None
+
     # ✅ Generate Interview Prompt (Async)
     async def generate_prompt(self, tech_stack: str, difficulty: str) -> Optional[str]:
         try:
@@ -56,41 +72,48 @@ class TechStackAgent:
                 temperature=0.7,
                 max_tokens=1000
             )
+            print(response)
             return response.choices[0].message.content
+        
         except Exception as e:
             logger.error(f"Prompt generation failed: {str(e)}")
             return None
 
-    # ✅ Save Prompt to Database (Async)
-    async def save_prompt_to_db(
-        self, db: AsyncSession, prompt_data: TechStackPromptCreate
-    ) -> Optional[TechStackPrompts]:
+
+    async def save_generated_prompt_to_db(
+        self, db: AsyncSession, tech_stack: str, difficulty: str, generated_prompt: str
+    ) -> Optional[Prompt]:
         try:
-            db_prompt = TechStackPrompts(
-                tech_stack=prompt_data.tech_stack,
-                difficulty=prompt_data.difficulty,
-                generated_prompt=prompt_data.generated_prompt
+            # Ensure difficulty is a valid Enum
+            difficulty_enum = Difficulty[difficulty.upper()]  # Convert to Difficulty Enum
+
+            # Create new Prompt instance
+            db_prompt = Prompt(
+                prompt_id=uuid4(),  # Ensure UUID is generated
+                content=generated_prompt,
+                tech_stack=tech_stack,
+                difficulty=difficulty_enum
             )
+
+            print(f"Saving to DB: {db_prompt}")
+
             db.add(db_prompt)
             await db.commit()
             await db.refresh(db_prompt)
-            return db_prompt
-        except Exception as e:
-            logger.error(f"Failed to save prompt to database: {str(e)}")
-            await db.rollback()
-            return None
 
-    # ✅ Fetch Existing Prompt by Tech Stack & Difficulty (Async)
-    async def get_existing_prompt(
-        self, db: AsyncSession, tech_stack: str, difficulty: str
-    ) -> Optional[TechStackPrompts]:
-        try:
-            query = select(TechStackPrompts).where(
-                (TechStackPrompts.tech_stack == tech_stack)
-                & (TechStackPrompts.difficulty == difficulty)
-            )
-            result = await db.execute(query)
-            return result.scalars().first()
+            return db_prompt
+
+        except KeyError:
+            logger.error(f"Invalid difficulty level provided: {difficulty}")
+            await db.rollback()
+            raise HTTPException(status_code=400, detail="Invalid difficulty level. Use EASY, MEDIUM, or HARD.")
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while saving generated prompt: {str(e)}")
+            await db.rollback()
+            raise HTTPException(status_code=500, detail="Database error while saving generated prompt.")
+
         except Exception as e:
-            logger.error(f"Failed to fetch existing prompt: {str(e)}")
-            return None
+            logger.error(f"Unexpected error: {str(e)}")
+            await db.rollback()
+            raise HTTPException(status_code=500, detail="Unexpected error occurred while saving prompt.")
