@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from backend.services import resume_services
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
+from uuid import UUID
 
 router = APIRouter()
 
@@ -21,7 +22,13 @@ async def submit_resume(
     form_data: Dict = ...,  # Expect JSON body
     db: AsyncSession = Depends(get_db)
 ):
-    return await resume_services.submit_resume(user_id, form_data, db)
+    # Validate user_id
+    try:
+        user_uuid = UUID(user_id)  # This will raise an error if user_id is not a valid UUID
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user_id format")
+
+    return await resume_services.submit_resume(user_uuid, form_data, db)
 
 @router.get("/get_user_resumes/{user_id}")
 async def get_user_resumes(
