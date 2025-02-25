@@ -72,9 +72,6 @@ async def register_admin(
     db: AsyncSession = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    # Debugging: Print current user
-    print("Current User:", current_user.username, "Role:", current_user.role)
-
     # Fetch existing admins
     existing_admins_query = select(User).where(User.role == "ADMIN")
     existing_admins_result = await db.execute(existing_admins_query)
@@ -82,10 +79,9 @@ async def register_admin(
 
     # Allow the first admin registration if no existing admins
     if not existing_admins:
-        print("No existing admins. Allowing first admin registration.")  # Debugging
-        new_admin = await register_user(db=db, user=user, role="ADMIN")
+        new_admin = await register_user(db=db, user=user, role="ADMIN")  # Set role to "ADMIN"
         return schemas.UserResponse(
-            user_id=str(new_admin.user_id),  # Convert UUID to string
+            user_id=str(new_admin.user_id),
             username=new_admin.username,
             email=new_admin.email,
             role=new_admin.role
@@ -93,13 +89,12 @@ async def register_admin(
 
     # If an admin exists, only allow another admin to create new admins
     if current_user.role != "ADMIN":
-        print("User is not an admin. Denying access.")  # Debugging
         raise HTTPException(status_code=403, detail="Not authorized to create admin.")
 
-    new_admin = await register_user(db=db, user=user, role="ADMIN")
+    new_admin = await register_user(db=db, user=user, role="ADMIN")  # Set role to "ADMIN"
 
     return schemas.UserResponse(
-        user_id=str(new_admin.user_id),  # Convert UUID to string
+        user_id=str(new_admin.user_id),
         username=new_admin.username,
         email=new_admin.email,
         role=new_admin.role

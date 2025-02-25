@@ -8,8 +8,13 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.future import select
 from datetime import timedelta
+import uuid
+
+
 
 async def register_user(db: AsyncSession, user: UserCreate, role: str = "USER"):
+    """Registers a new user and returns the user object."""
+
     # Check if the username already exists
     username_query = select(User).where(User.username == user.username)
     username_result = await db.execute(username_query)
@@ -26,15 +31,24 @@ async def register_user(db: AsyncSession, user: UserCreate, role: str = "USER"):
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Proceed with registration
+    # Hash password
     hashed_password = Hash.bcrypt(user.password)
-    db_user = User(username=user.username, email=user.email, hashed_password=hashed_password, role=role)
-    db.add(db_user)
+
+    # Create new user instance
+    new_user = User(
+        user_id=uuid.uuid4(),
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password,
+        role=role
+    )
+
+    db.add(new_user)
     await db.commit()
-    await db.refresh(db_user)
+    await db.refresh(new_user)
 
+    return new_user  # Return the User object instead of a dictionary
 
-    return db_user  # Return the user object
 
 async def authenticate_user(db: AsyncSession, email: str, password: str):
     query = select(User).where(User.email == email)
