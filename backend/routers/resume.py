@@ -2,61 +2,85 @@ from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, Path, Q
 from typing import Dict
 import uuid
 from fastapi.responses import JSONResponse
-from services import resume_services
-from sqlalchemy.orm import Session
-from db import get_db
+from backend.services import resume_services
+from sqlalchemy.ext.asyncio import AsyncSession
+from backend.database import get_db
+from uuid import UUID
 
 router = APIRouter()
 
+
 @router.post("/upload/")
-async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    if not file.filename.endswith('.pdf'):
-        return JSONResponse(content={"error": "Only PDF files are allowed"}, status_code=400)
+async def upload_resume(
+    file: UploadFile = File(...), db: AsyncSession = Depends(get_db)
+):
+    if not file.filename.endswith(".pdf"):
+        return JSONResponse(
+            content={"error": "Only PDF files are allowed"}, status_code=400
+        )
 
-    return await resume_services.upload_resume(file)
-
+    return await resume_services.upload_resume(file, db)
 
 
 @router.post("/submit/")
 async def submit_resume(
     user_id: str = Query(..., description="UUID of the user"),
     form_data: Dict = ...,  # Expect JSON body
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    return await resume_services.submit_resume(user_id, form_data, db)
+    # Validate user_id
+    try:
+        user_uuid = UUID(
+            user_id
+        )  # This will raise an error if user_id is not a valid UUID
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user_id format")
+
+    return await resume_services.submit_resume(user_uuid, form_data, db)
+
 
 @router.get("/get_user_resumes/{user_id}")
 async def get_user_resumes(
     user_id: str = Path(..., description="The ID of the user"),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     print(f"Received request for user_id: {user_id}")  # Debug print
     try:
         resumes = await resume_services.get_user_resumes(user_id, db)
+        if resumes is None:
+            raise HTTPException(
+                status_code=404, detail=f"No resumes found for user {user_id}"
+            )
         return resumes
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"No resumes found for user {user_id}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/users/{user_id}/resumes/{resume_id}")
 async def get_resume_by_user_id(
     user_id: str = Path(..., description="The ID of the user"),
     resume_id: str = Path(..., description="The ID of the resume to retrieve"),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         resume = await resume_services.get_resume_by_user_id(user_id, resume_id, db)
+
         if not resume:
             raise HTTPException(status_code=404, detail=f"Resume {resume_id} not found")
-        if resume.user_id != user_id:  # Access the ORM object's attribute
+
+        # ✅ FIX: Access "user_id" as a dictionary key, not an attribute
+        if resume.get("user_id") != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
-        return resume  # Return the ORM object directly
+
+        return resume
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/resume/{resume_id}")
 async def get_resume_by_id(
     resume_id: str = Path(..., description="The ID of the resume to retrieve"),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         resume = await resume_services.get_resume_by_id(resume_id, db)

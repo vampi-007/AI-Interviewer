@@ -1,17 +1,40 @@
-import os
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+from functools import lru_cache
 
-load_dotenv()
 
-class Settings:
-    OPENAI_API_KEY = os.getenv('GITHUB_TOKEN')
-    UPLOAD_FOLDER = './uploads'
-    ALLOWED_ORIGINS = ["*"]
-    HOST = "127.0.0.1"
-    PORT = 8000
-    DATABASE_URL = f"postgresql://{os.getenv('DBUSER')}:{os.getenv('DBPASS')}@{os.getenv('DBHOST')}:{os.getenv('DBPORT')}/{os.getenv('DBNAME')}"
-    FROM_EMAIL = os.getenv('FROM_EMAIL')
-    EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
-    FRONTEND_URL = os.getenv('FRONTEND_URL', "http://localhost:3000")
+class Settings(BaseSettings):
+    # Database settings
+    database_url: str
+    UPLOAD_FOLDER: str = "./uploads"
 
-settings = Settings()
+    # JWT settings
+    secret_key: str
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
+
+    # Email settings
+    MAIL_USERNAME: str
+    MAIL_PASSWORD: str
+    MAIL_FROM: str
+    MAIL_PORT: int
+    MAIL_SERVER: str
+    MAIL_SSL_TLS: bool = False
+    MAIL_STARTTLS: bool = True
+    MAIL_FROM_NAME: str = "AI Interviewer"
+
+    # OpenAI settings
+    OPENAI_API_KEY: str
+    OPENAI_API_BASE: str = "https://models.inference.ai.azure.com"
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+
+
+@lru_cache()
+def get_settings():
+    return Settings()
+
+
+settings = get_settings()
