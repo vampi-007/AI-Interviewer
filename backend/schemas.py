@@ -1,10 +1,11 @@
 # app/schemas.py
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional , Dict, Any
 from datetime import datetime
 from enum import Enum
 from backend.models import Difficulty
 from uuid import UUID
+
 
 
 
@@ -78,3 +79,21 @@ class PromptUpdate(BaseModel):
 
 class PromptDelete(BaseModel):
     prompt_id: UUID
+
+
+
+class InterviewRequest(BaseModel):
+    user_id: str
+    prompt_id: Optional[str] = None 
+    resume_id: Optional[str] = None  # Optional field
+
+    class Config:
+        orm_mode = True
+
+
+class VapiEndOfCallReport(BaseModel):
+    message: Optional[Dict[str, Any]] = None
+    variableValues: Optional[Dict[str, Any]] = None
+
+    class Config:
+        orm_mode = True
