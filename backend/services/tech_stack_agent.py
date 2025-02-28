@@ -59,10 +59,21 @@ class TechStackAgent:
     # ✅ Generate Interview Prompt (Async)
     async def generate_prompt(self, tech_stack: str, difficulty: str) -> Optional[str]:
         try:
+            # Normalize the difficulty to uppercase
+            difficulty = difficulty.upper()
+
+            # Validate difficulty
+            if difficulty not in self.prompt_templates:
+                logger.error(f"Invalid difficulty level: {difficulty}. Must be one of {list(self.prompt_templates.keys())}.")
+                return None
+
             system_message = """You are a senior technical interviewer specializing in creating 
                 comprehensive, role-specific coding interview prompts. Generate detailed prompts 
                 that accurately match the specified difficulty level and technology stack."""
                 
+            # Log the values being used
+            logger.info(f"Generating prompt for tech_stack: {tech_stack}, difficulty: {difficulty}")
+
             response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
