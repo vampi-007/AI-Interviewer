@@ -23,7 +23,7 @@ from backend.models import User
 router = APIRouter()
 tech_agent = TechStackAgent()
 
-# ✅ Create Prompt (No Admin Protection)
+# ✅ Create Prompt 
 @router.post("/self-creation", response_model=Prompt, status_code=status.HTTP_201_CREATED)
 async def create_prompt_endpoint(
     prompt: PromptCreate,
@@ -35,7 +35,7 @@ async def create_prompt_endpoint(
 
     return await create_prompt(db, prompt)
 
-# ✅ Get Tech Stack Prompts by Difficulty (No Admin Protection)
+# ✅ Get Tech Stack Prompts by Difficulty 
 @router.get("/tech-stack", response_model=List[Prompt])
 async def get_tech_stack_prompts_endpoint(
     tech_stack: str,
@@ -57,7 +57,7 @@ async def get_tech_stack_prompts_endpoint(
         for prompt in prompts
     ]
 
-# ✅ Get All Prompts (No Admin Protection)
+# ✅ Get All Prompts
 @router.get("/", response_model=List[Prompt])
 async def get_prompts_endpoint(
     skip: int = Query(0, ge=0),
@@ -67,7 +67,7 @@ async def get_prompts_endpoint(
 ):
     return await get_prompts(db, skip, limit)
 
-# ✅ Get Prompt by ID (No Admin Protection)
+# ✅ Get Prompt by ID 
 @router.get("/{prompt_id}", response_model=PromptResponse)
 async def get_prompt_endpoint(
     prompt_id: UUID = Path(...),
@@ -87,7 +87,7 @@ async def get_prompt_endpoint(
         "updated_at": db_prompt.updated_at.isoformat()   # Convert datetime to string
     }
 
-# ✅ Update Prompt (No Admin Protection)
+# ✅ Update Prompt 
 @router.put("/{prompt_id}", response_model=Prompt)
 async def update_prompt_endpoint(
     prompt_id: UUID,
@@ -119,7 +119,7 @@ async def delete_prompt_endpoint(
 
     return {"detail": "Prompt deleted successfully"}
 
-# ✅ Generate and Store AI-generated Prompt (No Admin Protection)
+# ✅ Generate and Store AI-generated Prompt 
 @router.post("/generate-and-store", status_code=status.HTTP_201_CREATED)
 async def generate_and_store_prompt(
     tech_stack: str,
