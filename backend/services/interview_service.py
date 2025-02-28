@@ -91,9 +91,13 @@ async def handle_vapi_end_of_call(request: Request, db: AsyncSession):
             user_id=interview_dict["user_id"],
             prompt_id=interview_dict["prompt_id"],
             resume_id=interview_dict["resume_id"],
-            start_time=datetime.utcnow(),
-            end_time=datetime.utcnow(),
-            duration=1800,  # Example: 30 minutes
+            start_time=datetime.fromisoformat(message.get('startedAt', datetime.utcnow().isoformat())),
+            end_time=datetime.fromisoformat(message.get('endedAt', datetime.utcnow().isoformat())),
+            duration=float(message.get('durationSeconds', 0)),
+            transcript=message.get('transcript', ''),
+            summary=analysis.get('summary', ''),
+            recording_url=message.get('recordingUrl', ''),
+            video_recording_url=artifact.get('videoRecordingUrl', ''),
             success_evaluation=success_evaluation
         )
 
@@ -130,8 +134,3 @@ async def end_interview(session_token: str):
     redis_client.delete(f"interview:{session_token}")
 
     return {"message": "Interview session ended by user. Waiting for VAPI report."}
-
-class InterviewRequest(BaseModel):
-    user_id: str
-    prompt_id: Optional[str] = None  # Optional field
-    resume_id: Optional[str] = None  # Optional field
