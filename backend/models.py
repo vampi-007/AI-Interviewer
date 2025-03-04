@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     Enum as SQLEnum,
     JSON,
+    Text,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -39,6 +40,7 @@ class User(Base):
     refresh_token = Column(String)  # Keep this for refresh token functionality
 
     resumes = relationship("Resumes", back_populates="user")
+    interviews = relationship("Interview", back_populates="user")
 
 
 class Resumes(Base):
@@ -50,7 +52,7 @@ class Resumes(Base):
     user_id = Column(PGUUID(as_uuid=True), ForeignKey("users.user_id"))
 
     user = relationship("User", back_populates="resumes")
-    # interviews = relationship("Interview", back_populates="resume")
+    interviews = relationship("Interview", back_populates="resumes")
 
 
 class Prompt(Base):
@@ -64,3 +66,26 @@ class Prompt(Base):
     content = Column(String, nullable=False)  # The actual prompt content
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Interview(Base):
+    __tablename__ = "interviews"
+
+    interview_id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    start = Column(DateTime, nullable=False, default=None)
+    end = Column(DateTime, nullable=True, default=None)
+    duration = Column(Integer, nullable=True, default=None)
+    transcript = Column(Text, nullable=True)
+    summary = Column(Text, nullable=True)
+    recording_url = Column(String, nullable=True)
+    video_recording_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    success_evaluation = Column(Integer, nullable=True)
+
+    resume_id = Column(
+        PGUUID(as_uuid=True), ForeignKey("resumes.resume_id"), nullable=False
+    )
+    user_id = Column(PGUUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+
+    user = relationship("User", back_populates="interviews")
+    resumes = relationship("Resumes", back_populates="interviews")

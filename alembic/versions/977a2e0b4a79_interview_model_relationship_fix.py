@@ -1,8 +1,8 @@
-"""pushing tables
+"""Interview model relationship fix
 
-Revision ID: 72abef1c49e2
-Revises: 
-Create Date: 2025-02-24 20:46:43.214905
+Revision ID: 977a2e0b4a79
+Revises: 03ec526975d7
+Create Date: 2025-02-27 23:01:33.086766
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '72abef1c49e2'
-down_revision: Union[str, None] = None
+revision: str = '977a2e0b4a79'
+down_revision: Union[str, None] = '03ec526975d7'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

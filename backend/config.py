@@ -4,7 +4,13 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Database settings
-    database_url: str
+    DATABASE_URL: str
+    DBUSER: str
+    DBPASS: str
+    DBHOST: str
+    DBPORT: int
+    DBNAME: str
+
     UPLOAD_FOLDER: str = "./uploads"
 
     # JWT settings
@@ -19,17 +25,24 @@ class Settings(BaseSettings):
     MAIL_FROM: str
     MAIL_PORT: int
     MAIL_SERVER: str
-    MAIL_SSL_TLS: bool = False
-    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool
+    MAIL_STARTTLS: bool
     MAIL_FROM_NAME: str = "AI Interviewer"
 
     # OpenAI settings
     OPENAI_API_KEY: str
     OPENAI_API_BASE: str = "https://models.inference.ai.azure.com"
 
+    # VAPI settings
+    VAPI_BASE_URL: str
+    VAPI_PRIVATE_KEY: str
+    VAPI_ASSISTANT_ID: str
+    VAPI_ORG_ID: str
+
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "allow"
 
 
 @lru_cache()

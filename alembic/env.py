@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from backend.database import Base
 from backend.models import Base, User, Resumes, Prompt
-  # Import all models
+
+# Import all models
 
 import os
 from dotenv import load_dotenv
@@ -22,7 +23,9 @@ config = context.config
 # Update the database URL with asyncpg
 db_url = os.getenv("DATABASE_URL")
 if db_url.startswith("postgresql://"):
-    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)  # Use asyncpg for Alembic
+    db_url = db_url.replace(
+        "postgresql://", "postgresql+asyncpg://", 1
+    )  # Use asyncpg for Alembic
 
 config.set_main_option("sqlalchemy.url", db_url)
 
@@ -42,11 +45,13 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+
 def do_run_migrations(connection: Connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode.
@@ -68,6 +73,7 @@ async def run_async_migrations() -> None:
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -92,9 +98,11 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
+
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
     asyncio.run(run_async_migrations())
+
 
 if context.is_offline_mode():
     run_migrations_offline()
