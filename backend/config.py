@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -12,6 +13,11 @@ class Settings(BaseSettings):
     DBNAME: str
 
     UPLOAD_FOLDER: str = "./uploads"
+    database_url: str
+    UPLOAD_FOLDER: str = "./uploads"
+
+    # Redis settings (Fixed ✅)
+    REDIS_URL: str
 
     # JWT settings
     secret_key: str
@@ -40,7 +46,7 @@ class Settings(BaseSettings):
     VAPI_ORG_ID: str
 
     class Config:
-        env_file = ".env"
+        env_file = ".env"  # Pydantic automatically reads from this file
         case_sensitive = False
         extra = "allow"
 

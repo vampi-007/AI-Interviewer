@@ -16,6 +16,7 @@ from sqlalchemy.orm import relationship
 from enum import Enum
 import uuid
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from backend.database import Base
 
 Base = declarative_base()
 
@@ -67,25 +68,34 @@ class Prompt(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    interviews = relationship("Interview", back_populates="prompt")
+
 
 class Interview(Base):
     __tablename__ = "interviews"
 
-    interview_id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    start = Column(DateTime, nullable=False, default=None)
-    end = Column(DateTime, nullable=True, default=None)
-    duration = Column(Integer, nullable=True, default=None)
-    transcript = Column(Text, nullable=True)
-    summary = Column(Text, nullable=True)
-    recording_url = Column(String, nullable=True)
-    video_recording_url = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    success_evaluation = Column(Integer, nullable=True)
-
-    resume_id = Column(
-        PGUUID(as_uuid=True), ForeignKey("resumes.resume_id"), nullable=False
+    interview_id = Column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True
     )
     user_id = Column(PGUUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    prompt_id = Column(
+        PGUUID(as_uuid=True), ForeignKey("prompts.prompt_id"), nullable=True
+    )  # Tech-stack-based interview
+    resume_id = Column(
+        PGUUID(as_uuid=True), ForeignKey("resumes.resume_id"), nullable=True
+    )  # Resume-based interview
 
+    start_time = Column(DateTime, nullable=True)
+    end_time = Column(DateTime, nullable=True)
+    duration = Column(Integer, nullable=True)  # Duration in seconds
+    transcript = Column(Text, nullable=True)
+    summary = Column(Text, nullable=True)
+    recording_url = Column(Text, nullable=True)
+    video_recording_url = Column(Text, nullable=True)
+    success_evaluation = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
     user = relationship("User", back_populates="interviews")
-    resumes = relationship("Resumes", back_populates="interviews")
+    prompt = relationship("Prompt", back_populates="interviews")
+    resume = relationship("Resumes", back_populates="interviews")
