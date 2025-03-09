@@ -1,7 +1,7 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import auth ,resume ,user ,admin ,prompt , interview
+from backend.routers import auth ,resume ,user ,admin ,prompt , interview , feedback_router
 from backend.database import init_db
 
 
@@ -31,3 +31,4 @@ app.include_router(user.router, tags=["User"])
 app.include_router(admin.router, tags=["Admin"])
 app.include_router(prompt.router, tags=["Prompt"])
 app.include_router(interview.router , tags=["Interviews"])
+app.include_router(feedback_router.router , tags=["Feedback"])
