@@ -1,5 +1,5 @@
 # app/models.py
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum, JSON , Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum, JSON , Text , Float
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from sqlalchemy.orm import relationship
@@ -7,6 +7,7 @@ from enum import Enum
 import uuid
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from backend.database import Base
+from sqlalchemy.dialects.postgresql import ARRAY, JSON
 
 Base = declarative_base()
 
@@ -81,3 +82,27 @@ class Interview(Base):
     user = relationship("User", back_populates="interviews")
     prompt = relationship("Prompt", back_populates="interviews")
     resume = relationship("Resumes", back_populates="interviews")
+    feedback = relationship("InterviewFeedback", back_populates="interview")
+
+ 
+
+class InterviewFeedback(Base):
+    __tablename__ = "interview_feedback"
+    
+    feedback_id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    interview_id = Column(PGUUID(as_uuid=True), ForeignKey("interviews.interview_id"), nullable=False)
+    
+    # Core feedback (based only on transcript and evaluation)
+    overall_score = Column(Float, nullable=False)
+    overall_feedback = Column(Text, nullable=False)
+    
+    # Structured feedback categories
+    strengths = Column(ARRAY(String), nullable=True)
+    improvement_areas = Column(Text, nullable=False)  # JSON string with improvement suggestions
+    next_steps = Column(ARRAY(String), nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship with Interview
+    interview = relationship("Interview", back_populates="feedback")
