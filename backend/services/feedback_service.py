@@ -44,44 +44,47 @@ async def generate_interview_feedback(interview_id: uuid.UUID, db: AsyncSession)
         "duration": interview.duration or 0
     }
     
-    # Create a simplified prompt that focuses only on available data
+    # Modified prompt for voice-based interviews
     feedback_prompt = PromptTemplate(
         input_variables=["transcript", "evaluation_score", "duration"],
         template="""
-        You are an expert interview coach. Based solely on this interview transcript and the provided evaluation score, 
-        provide constructive feedback to help the candidate improve their interviewing skills.
-        
-        Interview Transcript:
-        {transcript}
-        
-        Interview Score: {evaluation_score}/10
-        Interview Duration: {duration} seconds
-        
-        Please analyze the transcript carefully to:
-        1. Identify key strengths in the interview responses
-        2. Identify areas where improvement would be beneficial
-        3. Provide specific, actionable recommendations for future interviews
-        
-        Format your response as a JSON object with the following structure:
+        As an interview coach, please review this voice-based technical interview transcript and provide professional feedback.
+
+        Interview Details:
+        - Audio Interview Transcript: {transcript}
+        - Assessment Score: {evaluation_score}/10
+        - Duration: {duration} seconds
+
+        This was a voice-based interview where the candidate answered questions verbally without writing code. 
+        Please evaluate based on verbal communication, technical knowledge expression, problem-solving approach,
+        and how well they articulated their thoughts.
+
+        Please provide a structured analysis with:
+        1. A summary of the candidate's verbal performance
+        2. Key strengths demonstrated in their verbal responses
+        3. Areas where verbal communication and technical explanation could be improved
+        4. Specific recommendations for future voice interviews
+
+        Format the response as a JSON object with this structure:
         {{
-          "overall_score": float,  // Use the provided evaluation score as a base but adjust based on your analysis
-          "overall_feedback": "string",  // 2-3 sentence summary of performance
-          "strengths": [  // List 3-5 key strengths observed
+          "overall_score": float,  // Based on the assessment score provided
+          "overall_feedback": "string",  // Brief professional summary of verbal performance
+          "strengths": [  // 3-5 notable strengths in verbal communication
             "string"
           ],
-          "improvement_areas": [  // List 3-5 areas for improvement
+          "improvement_areas": [  // 3-5 professional development opportunities
             {{
-              "area": "one of [communication, technical, problem_solving, experience, confidence, clarity]",
-              "weakness": "string",  // What specifically needs improvement
-              "suggestion": "string"  // Actionable advice to improve
+              "area": "string",  // Category (verbal_communication, technical_explanation, problem_solving_approach, etc.)
+              "weakness": "string",  // Area for development
+              "suggestion": "string"  // Professional guidance for voice interviews
             }}
           ],
-          "next_steps": [  // 3 specific actions the candidate should take
+          "next_steps": [  // 3 recommended action items for improving interview communication
             "string"
           ]
         }}
-        
-        Don't include any commentary outside the JSON structure.
+
+        Please provide only the JSON object in your response.
         """
     )
     
@@ -91,8 +94,33 @@ async def generate_interview_feedback(interview_id: uuid.UUID, db: AsyncSession)
     
     try:
         # Extract JSON from response
-        response_content = response.content.strip()
+        response_content = response.content if hasattr(response, 'content') else str(response)
+        
+        # Debug the response
+        print(f"Raw response: {response_content[:500]}...")
+        
+        # Clean the response to ensure it's valid JSON
+        # Sometimes the LLM might return markdown or extra text
+        response_content = response_content.strip()
+        
+        # Find JSON content if response is wrapped in markdown or other text
+        json_start = response_content.find('{')
+        json_end = response_content.rfind('}')
+        
+        if json_start >= 0 and json_end >= 0:
+            response_content = response_content[json_start:json_end+1]
+        
+        if not response_content:
+            raise ValueError("Empty response from LLM")
+            
         feedback_json = json.loads(response_content)
+        
+        # Validate required fields are present
+        required_fields = ["overall_score", "overall_feedback", "strengths", 
+                          "improvement_areas", "next_steps"]
+        for field in required_fields:
+            if field not in feedback_json:
+                raise KeyError(f"Missing required field: {field}")
         
         # Create and store feedback in database
         db_feedback = InterviewFeedbackModel(
@@ -122,5 +150,7 @@ async def generate_interview_feedback(interview_id: uuid.UUID, db: AsyncSession)
             "created_at": db_feedback.created_at
         }
         
-    except (json.JSONDecodeError, KeyError) as e:
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"Error processing feedback: {str(e)}")
+        print(f"Response content: {response_content[:1000]}...")
         raise HTTPException(status_code=500, detail=f"Error processing feedback: {str(e)}")
