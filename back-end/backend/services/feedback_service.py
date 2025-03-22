@@ -44,65 +44,83 @@ async def generate_interview_feedback(interview_id: uuid.UUID, db: AsyncSession)
         "duration": interview.duration or 0
     }
     
+    # Modified prompt for voice-based interviews
     feedback_prompt = PromptTemplate(
-    input_variables=["transcript", "evaluation_score", "duration"],
-    template="""
-    As an *experienced interview coach, your role is to provide **constructive, professional, and ethical* feedback on this *voice-based technical interview. Ensure that the feedback is **objective, encouraging, and actionable*.
+        input_variables=["transcript", "evaluation_score", "duration"],
+        template="""
+        As an interview coach, please review this voice-based technical interview transcript and provide professional feedback.
 
-    *Interview Details:*
-    - *Audio Interview Transcript:* {transcript}
-    - *Assessment Score:* {evaluation_score}/10
-    - *Duration:* {duration} seconds
+        Interview Details:
+        - Audio Interview Transcript: {transcript}
+        - Assessment Score: {evaluation_score}/10
+        - Duration: {duration} seconds
 
-    This interview focused on *verbal technical explanations* rather than written code. Evaluate the candidate based on:
-    - *Clarity and effectiveness* of verbal communication  
-    - *Technical knowledge and depth of explanation*  
-    - *Logical problem-solving approach*  
-    - *Confidence and articulation*  
+        This was a voice-based interview where the candidate answered questions verbally without writing code. 
+        Please evaluate based on verbal communication, technical knowledge expression, problem-solving approach,
+        and how well they articulated their thoughts.
 
-    *Provide a structured, professional analysis with:*
-    
-    1. *Overall summary* of the candidate’s verbal performance (objective and encouraging)  
-    2. *Key strengths* in communication and technical explanation  
-    3. *Constructive improvement areas* (ensure respectful, professional wording)  
-    4. *Actionable recommendations* for improving voice-based technical interviews  
+        Please provide a structured analysis with:
+        1. A summary of the candidate's verbal performance
+        2. Key strengths demonstrated in their verbal responses
+        3. Areas where verbal communication and technical explanation could be improved
+        4. Specific recommendations for future voice interviews
 
-    *Response Format (JSON only):*
-    {{
-      "overall_score": float,  // Final score based on evaluation_score (1-10 scale)
-      "overall_feedback": "string",  // A concise and encouraging summary of the candidate’s performance
-      "strengths": [  // 3-5 well-defined strengths in communication and technical explanation
-        "string"
-      ],
-      "improvement_areas": [  // 3-5 areas for development with positive guidance
+        Format the response as a JSON object with this structure:
         {{
-          "area": "string",  // Category (e.g., verbal_clarity, technical_depth, logical_reasoning)
-          "weakness": "string",  // Identified challenge (e.g., "Struggled to structure responses clearly")
-          "suggestion": "string"  // Encouraging guidance (e.g., "Practice summarizing key points before answering")
+          "overall_score": float,  // Based on the assessment score provided
+          "overall_feedback": "string",  // Brief professional summary of verbal performance
+          "strengths": [  // 3-5 notable strengths in verbal communication
+            "string"
+          ],
+          "improvement_areas": [  // 3-5 professional development opportunities
+            {{
+              "area": "string",  // Category (verbal_communication, technical_explanation, problem_solving_approach, etc.)
+              "weakness": "string",  // Area for development
+              "suggestion": "string"  // Professional guidance for voice interviews
+            }}
+          ],
+          "next_steps": [  // 3 recommended action items for improving interview communication
+            "string"
+          ]
         }}
-      ],
-      "next_steps": [  // 3 specific, practical recommendations for improvement
-        "string"
-      ]
-    }}
 
-    *Guidelines for Feedback:*
-    - *Keep the tone professional, supportive, and encouraging.*  
-    - *Avoid harsh criticism or negative language.* Instead, focus on *improvement and growth*.  
-    - *Frame weaknesses as opportunities* for development rather than flaws.  
-    - *Use clear, specific, and constructive recommendations.*  
-
-    Please provide *only the JSON object* in your response.
-    """
-)
+        Please provide only the JSON object in your response.
+        """
+    )
+    
     # Generate feedback
     chain = feedback_prompt | llm
     response = await chain.ainvoke(context)
     
     try:
         # Extract JSON from response
-        response_content = response.content.strip()
+        response_content = response.content if hasattr(response, 'content') else str(response)
+        
+        # Debug the response
+        print(f"Raw response: {response_content[:500]}...")
+        
+        # Clean the response to ensure it's valid JSON
+        # Sometimes the LLM might return markdown or extra text
+        response_content = response_content.strip()
+        
+        # Find JSON content if response is wrapped in markdown or other text
+        json_start = response_content.find('{')
+        json_end = response_content.rfind('}')
+        
+        if json_start >= 0 and json_end >= 0:
+            response_content = response_content[json_start:json_end+1]
+        
+        if not response_content:
+            raise ValueError("Empty response from LLM")
+            
         feedback_json = json.loads(response_content)
+        
+        # Validate required fields are present
+        required_fields = ["overall_score", "overall_feedback", "strengths", 
+                          "improvement_areas", "next_steps"]
+        for field in required_fields:
+            if field not in feedback_json:
+                raise KeyError(f"Missing required field: {field}")
         
         # Create and store feedback in database
         db_feedback = InterviewFeedbackModel(
@@ -132,5 +150,7 @@ async def generate_interview_feedback(interview_id: uuid.UUID, db: AsyncSession)
             "created_at": db_feedback.created_at
         }
         
-    except (json.JSONDecodeError, KeyError) as e:
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"Error processing feedback: {str(e)}")
+        print(f"Response content: {response_content[:1000]}...")
         raise HTTPException(status_code=500, detail=f"Error processing feedback: {str(e)}")

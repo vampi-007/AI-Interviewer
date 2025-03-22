@@ -5,6 +5,8 @@ from datetime import datetime
 from enum import Enum
 from backend.models import Difficulty
 from uuid import UUID
+from pydantic.types import UUID4
+from typing import List
 
 
 
@@ -98,6 +100,7 @@ class VapiEndOfCallReport(BaseModel):
         orm_mode = True
 
 
+
 class FeedbackArea(str, Enum):
     COMMUNICATION = "communication"
     TECHNICAL = "technical"
@@ -115,8 +118,8 @@ class ImprovementSuggestion(BaseModel):
         orm_mode = True
 
 class InterviewFeedback(BaseModel):
-    feedback_id: UUID
-    interview_id: UUID
+    feedback_id: UUID4
+    interview_id: UUID4
     overall_score: float
     overall_feedback: str
     strengths: List[str]
@@ -128,7 +131,7 @@ class InterviewFeedback(BaseModel):
         orm_mode = True
         
 class FeedbackRequest(BaseModel):
-    interview_id: UUID
+    interview_id: UUID4
     
     class Config:
         orm_mode = True

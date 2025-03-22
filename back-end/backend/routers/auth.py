@@ -112,7 +112,8 @@ async def login(user: schemas.UserLogin, db: AsyncSession = Depends(get_db)):
     access_token = create_access_token(data={"sub": db_user.email, "role": db_user.role, "username": db_user.username})
     return {"access_token": access_token,
             "refresh_token": create_refresh_token(data={"sub": db_user.email}),
-            "user_id": db_user.user_id
+            "user_id": db_user.user_id,
+            "user_id": db_user.user_id,
             }
 
 @router.post("/token/refresh")
