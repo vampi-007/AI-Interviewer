@@ -50,6 +50,39 @@ export default function InterviewFeedbackPage() {
             } catch (err) {
                 console.error("Error fetching feedback:", err)
                 setError("Failed to load feedback data. Please try again later.")
+                setFeedback({
+                    feedback_id: "ff4ff0ad-0b13-4381-9464-c8681170f2b9",
+                    interview_id: "8689f84f-b6e3-417b-9900-cab67b646219",
+                    overall_score: 0,
+                    overall_feedback:
+                        "The interview was extremely brief, lasting only 8 seconds, which did not allow for any meaningful interaction or demonstration of skills. There is a significant need for improvement in engagement and communication.",
+                    strengths: [],
+                    improvement_areas: [
+                        {
+                            area: "communication",
+                            weakness: "The candidate did not engage in any dialogue during the interview.",
+                            suggestion:
+                                "Practice initiating conversations and responding to questions to develop a more interactive communication style.",
+                        },
+                        {
+                            area: "confidence",
+                            weakness: "The candidate's lack of response suggests a lack of confidence in speaking.",
+                            suggestion:
+                                "Engage in mock interviews with friends or mentors to build confidence in articulating thoughts.",
+                        },
+                        {
+                            area: "clarity",
+                            weakness: "There was no clarity in responses due to the absence of dialogue.",
+                            suggestion: "Prepare and practice clear and concise answers to common interview questions.",
+                        },
+                    ],
+                    next_steps: [
+                        "Schedule practice interviews with peers or a coach to improve communication skills.",
+                        "Research common interview questions and prepare thoughtful responses.",
+                        "Record yourself answering questions to identify areas for improvement in delivery and clarity.",
+                    ],
+                    created_at: "2025-03-18T18:02:28.353085",
+                })
                 toast({
                     title: "Error",
                     description: error?.toString() || "An error occurred during login",

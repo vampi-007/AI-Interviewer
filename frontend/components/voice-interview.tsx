@@ -133,7 +133,9 @@ export function VoiceInterview({ resumeData, sessionToken, promptData, interview
                         model: "eleven_flash_v2_5",
                         voiceId: "burt"
                     } as ElevenLabsVoice,
-                    firstMessage: "Hello I am burt I am going to conduct you interview."
+                    firstMessage: "Hello I am burt I am going to conduct you interview.",
+                    maxDurationSeconds: 900,
+                    
                 }, assistantOverrides)
 
 
