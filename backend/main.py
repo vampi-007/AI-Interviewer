@@ -10,7 +10,7 @@ app = FastAPI()
 
 # Configure CORS
 origins = [
-    "http://localhost:5173",  # React app running on this port
+    "http://localhost:3000",  # React app running on this port
     # Add other origins if needed
 ]
 

@@ -122,18 +122,18 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
     if payload is None:
         raise HTTPException(status_code=403, detail="Invalid refresh token")
 
-    username = payload.get("sub")  # Extract username from the payload
+    email = payload  # Extract username from the payload
 
     # Use correct async query syntax
-    query = select(User).where(User.username == username)
+    query = select(User).where(User.email == email)
     result = await db.execute(query)
     user = result.scalar_one_or_none()
-    
+   
     if not user:
         raise HTTPException(status_code=403, detail="Invalid refresh token")
 
     # Create a new access token
-    access_token = create_access_token(data={"sub": username})
+    access_token = create_access_token(data={"sub": email})
     return {"access_token": access_token}
 
 @router.post("/forgot-password")
